@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../constants/test_products.dart';
@@ -18,12 +20,16 @@ class FakeProductRepository {
     return _products.firstWhere((product) => product.id == id);
   }
 
-  Future<List<Product>> fetchProductsList() {
+  Future<List<Product>> fetchProductsList() async {
+    await Future.delayed(const Duration(seconds: 2));
+    // throw Exception('Connection Fauiled');
     return Future.value(_products);
   }
 
-  Stream<List<Product>> watchProductsList() {
-    return Stream.value(_products);
+  Stream<List<Product>> watchProductsList() async* {
+    await Future.delayed(const Duration(seconds: 2));
+    // return Stream.value(_products);
+    yield _products;
   }
 
   Stream<Product?> watchProduct(String id) {
@@ -34,4 +40,24 @@ class FakeProductRepository {
 
 final productsRepositoryProvider = Provider<FakeProductRepository>((ref) {
   return FakeProductRepository();
+});
+
+final productsListStreamProvider =
+    StreamProvider.autoDispose<List<Product>>((ref) {
+  final producstRepository = ref.watch(productsRepositoryProvider);
+  return producstRepository.watchProductsList();
+});
+
+final productsListFutureProvider =
+    FutureProvider.autoDispose<List<Product>>((ref) {
+  final producstRepository = ref.watch(productsRepositoryProvider);
+  return producstRepository.fetchProductsList();
+});
+
+final productProvider =
+    StreamProvider.autoDispose.family<Product?, String>((ref, id) {
+  // final link = ref.keepAlive();
+  // Timer(const Duration(seconds: 10), () => link.close());
+  final productsRepository = ref.watch(productsRepositoryProvider);
+  return productsRepository.watchProduct(id);
 });
